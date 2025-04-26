@@ -1,6 +1,385 @@
 <!DOCTYPE html>
 <html>
   <py-script>
-    print("Hi")
+    """
+Teacher Turtle: An Underwater Adventure
+ICS3U
+Nishanth Gopu
+A turtle is walking from her home to her work of teaching. However, she is surprised to see fish in the classroom instead of her turtle students. She sets on a journey with multiple obstacles to retrieve her students from the evil fish teacher in the water. 
+To win this game, the player must avoid the obstacles and eat 10 green apples. This would then return her students to her. Conversely to lose, the player would need to either hit an obstacle to decrease in health or die, but there are some aiding the main character in their journey.
+This game has simple mechanics and even mimics Temple Run in a certain manner. However, this game is calmer with vibrant colours appealing to a typical 7-year-old. 
+
+History:
+March 28, 2025: Version 1
+April 1, 2025: Final Code
+
+"""
+
+# importing essential modules
+import pygame
+import time
+import random
+
+# Initialize pygame
+pygame.init()
+
+# specifc events
+from pygame.locals import(
+    QUIT,
+    KEYDOWN,
+    K_ESCAPE,
+    RLEACCEL,
+    K_UP,
+    K_DOWN,
+    K_RIGHT,
+    K_LEFT
+)
+
+#=========== CONSTANTS =============#
+    
+# Screen measurements which the other surfaces will be proportionate to.
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+
+# Colours
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+
+#=========== VARIABLES =============#
+
+# Health bar characteristics
+barSize = SCREEN_WIDTH/8
+barColor = (60, 255, 255)
+
+# Varies while playing. It increases speed of crabs and apples.
+accelerator = 10
+
+# Each apple colour associates with a certain number of points (negative or positive) that will be added to the health of the player
+applePoints = int()
+
+# Location of player at the start
+playerX = SCREEN_WIDTH/2
+
+# Common resize for apples and crabs
+resizeOthers = (SCREEN_WIDTH/16, SCREEN_HEIGHT/12)
+
+# To count the print the number of green apples eaten by the player
+greenAppleAdd = int()
+greenAppleCount = 0
+countText = f"Total Green Apples: {greenAppleCount}"
+textFont = pygame.font.SysFont("Arial", 60) # Just the font for the printed text
+
+# Either win or lose
+status = str()
+
+# Used to appropriate the framerate to the speed of the surfaces
+clock = pygame.time.Clock()
+
+#=========== FUNCTIONS =============#
+def createPlayer(player):
+    """
+    Arg:
+        player (sprite) - given a sprite
+    Respond:
+        Give the sprite an image, transparent background, resize, and rectangle of the image given
+    """
+    
+    resize = (3*SCREEN_WIDTH/32, SCREEN_HEIGHT/5)
+    
+    player.image = pygame.image.load("teacherTurtle.png").convert()
+    player.image = pygame.transform.scale(player.image, resize)
+    player.image.set_colorkey(WHITE, RLEACCEL) # Background transparency
+    player.rect = player.image.get_rect() # rect of image
+    
+
+def playerUpdate(player, playerX):
+    """
+    Arg:
+        player (sprite) and playerX (int)
+    Respond:
+        Update the player's x position to the variable but only in a certain range (inside the background surface's dimensions).
+    """
+    
+    # Keep the center of the sprite inside the the canvas at all times
+    if playerX <= 0:
+        playerX = 0
+    elif playerX >= SCREEN_WIDTH:
+        playerX = SCREEN_WIDTH
+        
+    # the x poisition varies while the y position is stationary
+    player.rect.center = (playerX, SCREEN_HEIGHT*5/6)
+    
+def createCrab(crab, accelerator, resize):
+    """
+    Arg:
+        crab (sprite) - give attributes
+        accelerator (int) - affects speed
+        resize (tuple) - resizing the given image
+    Respond:
+        - Give the sprite an image, transparent background, resize, and rectangle of the image given
+        - Randomly select a number which corresponds to a location on the canvas for this sprite and speeds
+        - Give starting position
+    """
+    
+    # Attributes
+    crab.image = pygame.image.load('crab.jpg').convert()
+    crab.image.set_colorkey(WHITE, RLEACCEL)
+    crab.image = pygame.transform.scale(crab.image, resize)
+    crab.rect = crab.image.get_rect()
+    
+    # Random number selection
+    crab.x = random.randint(1,99)
+    
+    # Correspond with a x position and speeds in the x and y directions
+    if 1 <= crab.x <= 33:
+        crab.x = SCREEN_WIDTH/4
+        crab.SpeedX = -(SCREEN_WIDTH/400)*accelerator/10
+        crab.SpeedY = (SCREEN_HEIGHT/60)*accelerator/10
+    elif 34 <= crab.x <= 66:
+        crab.x = SCREEN_WIDTH/2
+        crab.SpeedX = 0
+        crab.SpeedY = (SCREEN_HEIGHT/60)*accelerator/10
+    else:
+        crab.x = SCREEN_WIDTH*3/4
+        crab.SpeedX = (SCREEN_WIDTH/400)*accelerator/10
+        crab.SpeedY = (SCREEN_HEIGHT/60)*accelerator/10
+    
+    # Starting position
+    crab.rect.center = (crab.x, 0)
+    
+def crabUpdate(crab):
+    """
+    Arg:
+        crab (sprite)
+    Respond:
+        Assign constant motion of the crab and kill it when it leaves the screen
+    """
+    
+    crab.rect.move_ip(crab.SpeedX, crab.SpeedY)
+    
+    if crab.rect.top > SCREEN_HEIGHT:
+        crab.kill()
+        
+        
+def createApple(apple, accelerator, resize, applePoints, greenAppleAdd):
+    """
+    Arg:
+        apple (sprite)
+        accelerator (int) - affects speed
+        resize (tuple) - resizing dimensions
+        applePoints (int) - associated with the colour of the apple
+        greenAppleAdd (int) 
+    Respond:
+        - Random number generator to choose which colour should be given
+        - Random number generator to choose the location
+        - load the image and get its rect and resize
+        - the applePoints associated with each colour will be added to the healh bar length indicating whether it is harmful or healthy
+        - a value other than 0 for the green apple only
+        - Assign speed
+    """
+    
+    # Random number generator
+    colourDecider = random.randint(1,99)
+    
+    # Association with attributes to colour
+    if 1 <= colourDecider <= 33:
+        apple.image = pygame.image.load('yellowApple.png').convert()
+        apple.applePoints = -SCREEN_WIDTH/40
+        apple.greenAppleAdd = 0
+    elif 34 <= colourDecider <= 66:
+        apple.image = pygame.image.load('redApple.png').convert()
+        apple.applePoints = -SCREEN_WIDTH/16
+        apple.greenAppleAdd = 0
+    else:
+        apple.image = pygame.image.load('greenApple.png').convert()
+        apple.applePoints = SCREEN_WIDTH/32
+        apple.greenAppleAdd = 1
+        
+    apple.image = pygame.transform.scale(apple.image, resize)
+    apple.image.set_colorkey(WHITE, RLEACCEL)
+    apple.rect = apple.image.get_rect()
+    
+    # Random number generator again for randomly choosing the location
+    locationDecider = random.randint(1,99)
+    
+    # Association to a location and its respective speeds on the x and y directions
+    if 1 <= locationDecider <= 33:
+        apple.x = SCREEN_WIDTH/4
+        apple.SpeedX = -(SCREEN_WIDTH/400)*accelerator/10
+        apple.SpeedY = (SCREEN_HEIGHT/60)*accelerator/10
+    elif 34 <= locationDecider <= 66:
+        apple.x = SCREEN_WIDTH/2
+        apple.SpeedX = 0
+        apple.SpeedY = (SCREEN_HEIGHT/60)*accelerator/10
+    else:
+        apple.x = SCREEN_WIDTH*3/4
+        apple.SpeedX = (SCREEN_WIDTH/400)*accelerator/10
+        apple.SpeedY = (SCREEN_HEIGHT/60)*accelerator/10
+        
+    # Starting position varies per apple
+    apple.rect.center = (apple.x, 0)
+        
+def appleUpdate(apple):
+    """
+    Arg:
+        apple (sprite)
+    Respond:
+        - Uses given speed from creation function to actually move the sprite here
+        - kill the apple if exits the screen
+    """
+    # Movement
+    apple.rect.move_ip(apple.SpeedX, apple.SpeedY)
+    
+    # Kill if exits screen
+    if apple.rect.top > SCREEN_HEIGHT:
+        apple.kill()
+        
+def drawText(text, font, textColour, textX, textY):
+    """
+    Arg:
+        text (str)
+        font - variable stated above
+        textColour (tuple)
+        textX and textY - (int)
+    Respond:
+        renders a text form in given parameters as well as blitting it on the screen at a set coordinates.
+    """
+    countText = font.render(text, True, textColour)
+    screen.blit(countText, (textX, textY))
+
+#=========== MAIN =============#
+    
+# Set a background 
+screen = pygame.display.set_mode([SCREEN_WIDTH, SCREEN_HEIGHT])
+bg = pygame.image.load("underwaterBackground.jpg").convert() # Load and Render the image
+bg = pygame.transform.scale(bg, (SCREEN_WIDTH, SCREEN_HEIGHT)) # Scale the image to the screen dimensions
+
+# Initialize main player and create it
+teacherTurtle = pygame.sprite.Sprite()
+createPlayer(teacherTurtle)
+
+# Add a user event to occur every second
+ADD_CRAB = pygame.USEREVENT + 1 # Custom event bigger than the last reserved event
+pygame.time.set_timer(ADD_CRAB, 1000)
+
+# Add another user event to occur every half a second
+ADD_APPLE = pygame.USEREVENT + 2
+pygame.time.set_timer(ADD_APPLE, 500)
+
+# Initialize crab and apple as groups (mulitple with same characteristcis except for the attributes randomized in the create function)
+crabGroup = pygame.sprite.Group()
+appleGroup = pygame.sprite.Group()
+
+# Essential to run the code for the actual game
+running = True
+
+#=========== GAMEPLAY =============#
+while running:
+    
+    # An action corresponding to a python user event
+    for event in pygame.event.get():
+        if event.type == KEYDOWN:
+            if event.key == K_ESCAPE: # Escape button
+                running = False
+            if event.key == K_RIGHT: # Move right
+                playerX += SCREEN_WIDTH/16
+            elif event.key == K_LEFT: # Move left
+                playerX -= SCREEN_WIDTH/16
+    
+        if event.type == QUIT: # exit button
+            running = False
+            
+        # Creates a new crab through the create function and adds it to our crab group
+        if event.type == ADD_CRAB:
+            newCrab = pygame.sprite.Sprite()
+            createCrab(newCrab, accelerator, resizeOthers)
+            crabGroup.add(newCrab)
+        # Creates a new apple through the create function and adds it to our apple group
+        if event.type == ADD_APPLE:
+            newApple = pygame.sprite.Sprite()
+            createApple(newApple, accelerator, resizeOthers, applePoints, greenAppleAdd)
+            appleGroup.add(newApple)
+            
+    # Call the update function for the main player to update their motion and position
+    playerUpdate(teacherTurtle, playerX)
+    
+    # Update each crab of their movement and position
+    for crab in crabGroup:
+        crabUpdate(crab)
+       
+    # Update each apple of their movement and position
+    for apple in appleGroup:
+        appleUpdate(apple)
+        
+    #Blits ordered from which appears in layers first
+    screen.blit(bg, (0,0)) # What drawing and where is top-left corner
+    drawText(countText, textFont, BLACK, SCREEN_WIDTH/8, SCREEN_HEIGHT/6) # Counting the green apples eaten
+    screen.blit(teacherTurtle.image, teacherTurtle.rect) # Main character
+    pygame.draw.rect(screen, barColor, (SCREEN_WIDTH*13/16, SCREEN_HEIGHT/12, barSize, SCREEN_HEIGHT/30)) # Health bar
+    appleGroup.draw(screen) # apples
+    crabGroup.draw(screen) # crabs after apples because they can be hidden by the apples if under and would make the player lose the game
+    
+    # Detecting a collision between the player and a crab
+    col1 = pygame.sprite.spritecollideany(teacherTurtle, crabGroup)
+    
+    # As a result, the player would automatically lose on collision
+    if col1 is not None:
+        col1.kill()
+        running = False
+        status = "lose"
+        
+    # Detecting a collision between the player and an apple
+    col2 = pygame.sprite.spritecollideany(teacherTurtle, appleGroup)
+
+    # Depending on the apple, the health bar size will vary and the green apple count may increase if collision with a green apple because only they have greenAppleAdd equal to 1
+    if col2 is not None:
+        barSize += col2.applePoints # Different to each colour (red is really harmful, yellow does some damage, and green restores health)
+        barSize = max(0, min(barSize, SCREEN_WIDTH/8))  # Ensure barSize stays in range 
+        greenAppleCount += col2.greenAppleAdd
+        col2.kill()  # Remove the apple
+        
+        # If the health bar's variable exceeds in size, increase speed instead of the crabs and apples
+        if barSize >= SCREEN_WIDTH/8:
+            accelerator += 3
+            
+    # Update green apple count after this collision (increases only in collision with a green apple)
+    countText = f"Total Green Apples: {greenAppleCount}"
+    drawText(countText, textFont, BLACK, SCREEN_WIDTH/8, SCREEN_HEIGHT/6)
+    
+    # The player has lost if they lose all their health
+    if barSize <= 0:
+        running = False
+        status = "lose"
+        
+    # The player has won if they have collected 10 green apples
+    if greenAppleCount == 10:
+        running = False
+        status = "win"
+
+    # Call this function to update everything on the screen
+    pygame.display.update() # Basically interchangeable with flip()
+    
+    # Similar to framerate. Linked to the clock function in the beginning of this code.
+    clock.tick(30)
+    
+# EXITS THE WHILE LOOP
+
+# Change backrgound to black
+screen.fill(BLACK)    
+
+# Output different responses according to the status of the player
+if status == "win":
+    drawText("You win!!!!!", textFont, WHITE, SCREEN_WIDTH/3, SCREEN_HEIGHT/6)
+elif status == "lose":
+    drawText("You lost", textFont, WHITE, SCREEN_WIDTH/3, SCREEN_HEIGHT/6)
+        
+# Update the screen to the features listed above
+pygame.display.update()        
+
+# Wait for 5 sedconds till the next action
+time.sleep(5)
+
+# Quit the window
+pygame.quit()
   </py-script>
 </html>
